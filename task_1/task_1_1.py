@@ -3,38 +3,67 @@ from nltk.stem.snowball import SnowballStemmer
 import pymorphy2
 
 
-def tokenize(source, pattern):
-    return pattern.findall(source)
+def tokenize(source, regexp):
+    if regexp == generic:
+        return list(map(lambda item: item[0], regexp.findall(source)))
+    else:
+        return regexp.findall(source)
 
 
-word_and_separator = re.compile(r'[\w]+|[.,!?;]')
-word = re.compile(r'[\w]+')
-phone_number = re.compile(r'((\+7|8)[\-( ]?(\d{3})[\-) ]?(\d{3})[\- ]?(\d{2})[\- ]?(\d{2}))')
-address = re.compile(r'')
-emoticons = re.compile(r'')
-formula = re.compile(r'')
+# Task 1
+word = r'[A-ZА-Яa-zа-яёË]+'
+word_and_separator = r'[A-ZА-Яa-zа-яёË]+|[.,!?;:-]+'
+phone_number = r'((\+7|8)[\-( ]?(\d{3})[\-) ]?(\d{3})[\- ]?(\d{2})[\- ]?(\d{2}))'
 
-src_text = 'Эмоции — это то, что ты получаешь, в не зависимости, хочешь ты этого или нет. И это не просто эмоции. ' \
-           'Я не испытывал такого никогда: с одной стороны, тазик над головой со зловонной жидкостью так и плещется, ' \
-           'опрокидываясь на тебя иногда после \'доброго\' комментария и сразу же наполняясь опять, ожидая ' \
-           'своей минуты. С другой — это гормоны радости, которые начинают быстро выделяться, когда звездочки и ' \
-           'лайки растут и ты понимаешь, что кому-то твой труд пришелся по вкусу. Так вот, состояние в котором ты ' \
-           'находишься после первой статьи — это термоядерная смесь положительного и отрицательного, которая ' \
-           'уживается в тебе одновременно. Я не любитель такого каламбура эмоций, но точно знаю, что многим эти ' \
-           'состояния просто необходимы, как воздух. Кому-то полезно встряхнуться и посмотреть на некоторые вещи' \
-           ' другими глазами. Но во всех случаях, надо быть психологически готовым к совершенно неожиданному ' \
-           'развитию событий.'
+generic = re.compile('(%s|%s)' % (word_and_separator, phone_number))
 
+main_text = 'Этот текст предназначен для теста регулярных выражений. ' \
+           'Same, but written in English: This text is for testing ' \
+           'regular expressions. Вот несколько мобильных телефонов, ' \
+           'для тестирования: +79114567890, 89114567890, ' \
+           '+7-911–456-78-90, 8 911 456 78 90, 8(911)456 78 90, ' \
+           '+7(911)4567890. Должно работать. Must work. Точно работает?' \
+            'Вот тут проверяются еще нектороые знаки препинания ; - !!!'
+
+file_1 = open('./res/task_1.txt', 'a')
+
+for token in tokenize(source=main_text, regexp=re.compile(pattern=generic)):
+    file_1.write(str(token) + '\n')
+
+file_1.close()
+
+# Task 2
 stemmer = SnowballStemmer("russian")
+
+file_2 = open('./res/task_2.txt', 'a')
+
+for token in tokenize(source=main_text, regexp=re.compile(pattern=word)):
+    file_2.write(str(token) + ' ' + str(stemmer.stem(token)) + '\n')
+
+file_2.close()
+
+# Task 3
 morph = pymorphy2.MorphAnalyzer()
 
-tokens = tokenize(source=src_text, pattern=word)
 
-file = open("Petrenko.tsv", "a")
+morph_text = 'С камушка на камушек порхал воробышек, а на террасе, искусно задрапированной гобеленами с дефензивой ' \
+             'кронштадтского инфантерийского батальона, под искусственным абажуром, закамуфлированным под ' \
+             'марокканский минарет, веснушчатая свояченица вдовствующего протоиерея Агриппина Саввична потчевала ' \
+             'коллежского асессора, околоточного надзирателя и индифферентного ловеласа Фаддея Аполлинарьевича ' \
+             'винегретом со снетками.'
 
-for token in tokens:
-    stem = stemmer.stem(token)
-    mrph = morph.parse(token)[0].normal_form
-    file.write(str(token) + '    ' + str(stem) + '    ' + str(mrph) + '\n')
+file_3 = open('./res/task_3.txt', 'a')
 
-file.close()
+for token in tokenize(source=morph_text, regexp=re.compile(pattern=word)):
+    file_3.write(str(token) + ' ' + str(morph.parse(token)) + '\n')
+
+file_3.close()
+
+# Task 4
+file_4 = open('./res/Petrenko.tsv', 'a')
+
+for token in tokenize(source=main_text, regexp=re.compile(pattern=word)):
+    file_4\
+        .write(str(token) + '\t' + str(stemmer.stem(token)) + '\t' + str(morph.parse(token)[0].normal_form) + '\n')
+
+file_4.close()
