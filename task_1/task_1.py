@@ -15,10 +15,10 @@ def tokenize(source, regexp):
 # Задание 1
 word = r'[A-ZА-Яa-zа-яёË]+'
 word_and_separator = r'[A-ZА-Яa-zа-яёË]+|[.,!?;:]+'
-phone_number = r'(\+7|8)[\-( ]?(\d{3})[\-) ]?(\d{3})[\- ]?(\d{2})[\- ]?(\d{2})'
+phone_number = r'\+?[1-9][\-( ]?(\d{3})[\-) ]?(\d{3})[\- ]?(\d{2})[\- ]?(\d{2})'
 emoticons = r'[\:][\)\(]'
 
-generic = re.compile('(%s|%s|%s)' % (word_and_separator, phone_number, emoticons))
+generic = re.compile('(%s|%s|%s)' % (emoticons, word_and_separator, phone_number))
 
 # Чехов
 main_text = '''
@@ -62,7 +62,7 @@ file_2.close()
 # Задание 3
 morph = pymorphy2.MorphAnalyzer(lang='ru')
 
-dataset = open('../../../dict.tsv')
+dataset = open('dict.tsv')
 
 read_tsv = csv.reader(dataset, delimiter="\t")
 csv.field_size_limit(sys.maxsize)
