@@ -67,7 +67,7 @@ file_2 = open('res/task_7_with_p.tsv', 'a')
 file_2.write('Мои 3-граммы\tNLTK 3-граммы\n')
 
 for i in range(30):
-    file_2.write(' '.join(my_evaluation[i][0]) + '\t' + ' '.join(evaluation_with_punctuation[i]) + '\n')
+    file_2.write(' '.join(my_evaluation[i][0]) + '\t' + ' '.join(evaluation_with_punctuation[i][0]) + '\n')
 
 file_2.close()
 
@@ -79,6 +79,21 @@ file_3 = open('res/task_7_without_p.tsv', 'a')
 file_3.write('Мои 3-граммы\tNLTK 3-граммы\n')
 
 for i in range(30):
-    file_3.write(' '.join(my_evaluation[i][0]) + '\t' + ' '.join(evaluation_without_punctuation[i]) + '\n')
+    file_3.write(' '.join(my_evaluation[i][0]) + '\t' + ' '.join(evaluation_without_punctuation[i][0]) + '\n')
 
 file_3.close()
+
+file_4 = open('res/task_7_final.tsv', 'a')
+file_4.write('Мои 3-граммы\tT-score 1\tNLTK 3-граммы\tT-Score 2\n')
+
+for i in range(30):
+    file_4.write(' '.join(my_evaluation[i][0])
+                 + '\t'
+                 + str(my_evaluation[i][1])
+                 + '\t'
+                 + ' '.join(evaluation_without_punctuation[i][0])
+                 + '\t'
+                 + str(evaluation_without_punctuation[i][1])
+                 + '\n')
+
+file_4.close()
