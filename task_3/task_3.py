@@ -1,16 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.linear_model import LogisticRegression
-
+import pandas as pd
+import nltk
 from nltk.stem import WordNetLemmatizer
 import re
-
+from sklearn.linear_model import LogisticRegression
 import gensim.downloader
-from gensim.models import KeyedVectors
+
+nltk.download('wordnet')
 
 data = pd.read_csv("spam.csv", encoding='ISO-8859-1')
 data = data[['v1', 'v2']]
@@ -18,8 +18,19 @@ data['v1'] = (data['v1'] == 'spam').astype(int)
 
 texts = data['v2'].values
 labels = data['v1'].values
+data.head(10)
 
 texts_train, texts_test, y_train, y_test = train_test_split(texts, labels, test_size=0.5, random_state=42)
+
+
+# another dataset for sentiment analysis of movie reviews
+
+# train_data = pd.read_csv("imdb_reviews/train.csv")
+# test_data = pd.read_csv("imdb_reviews/test.csv")
+# texts_train = train_data['reviews'].values
+# y_train = train_data['sentiment'].values
+# texts_test = test_data['reviews'].values
+# y_test = test_data['sentiment'].values
 
 
 def preprocess(text):
@@ -102,12 +113,10 @@ class BinaryNaiveBayes:
         self.p_x_given_negative = [0.0] * len(word_counts_negative)
 
         for i in range(len(word_counts_positive)):
-            self.p_x_given_positive[i] = (word_counts_positive[i] + self.delta) / \
-                                         (word_counts_positive[i] + word_counts_negative[i])
-            self.p_x_given_negative[i] = (word_counts_negative[i] + self.delta) / \
-                                         (word_counts_positive[i] + word_counts_negative[i])
-        # # both must be of shape [vocab_size]; and don't forget to add self.delta!
+            self.p_x_given_positive[i] = (word_counts_positive[i] + self.delta) / sum(word_counts_positive)
+            self.p_x_given_negative[i] = (word_counts_negative[i] + self.delta) / sum(word_counts_negative)
 
+        # # both must be of shape [vocab_size]; and don't forget to add self.delta!
         return self
 
     def predict_scores(self, X):
@@ -122,6 +131,7 @@ class BinaryNaiveBayes:
         # as a dot-product with X
         p_x_given_negative_lg = list(map(lambda p: np.log(p), self.p_x_given_negative))
         p_x_given_positive_lg = list(map(lambda p: np.log(p), self.p_x_given_positive))
+
         score_negative = [np.log(self.p_y[0]) + np.dot(p_x_given_negative_lg, x) for x in X]
         score_positive = [np.log(self.p_y[1]) + np.dot(p_x_given_positive_lg, x) for x in X]
 
@@ -152,15 +162,17 @@ print(f"Model accuracy: {test_accuracy:.3f}")
 assert test_accuracy > 0.75, "Accuracy too low. There's likely a mistake in the code."
 print("Well done!")
 
-
 bow_vocabulary_2 = list(bow_vocabulary.keys())
 
-probability_ratio = sorted([(naive_model.p_x_given_positive[i]/naive_model.p_x_given_negative[i], i) for i in range(len(naive_model.p_x_given_positive))], key=lambda tup: tup[0], reverse=True)
+probability_ratio = sorted(
+    [(naive_model.p_x_given_positive[i] / naive_model.p_x_given_negative[i], i)
+     for i in range(len(naive_model.p_x_given_positive))], key=lambda tup: tup[0],
+    reverse=True)
+
 top_negative_words = list(map(lambda p: bow_vocabulary_2[p[1]], probability_ratio))[:25]
 
 for i, word in enumerate(top_negative_words):
     print(f"#{i}\t{word.rjust(10, ' ')}\t(ratio={probability_ratio[bow_vocabulary_2.index(word)][0]})")
-
 
 bow_model = LogisticRegression().fit(X_train_bow, y_train)
 
@@ -172,7 +184,7 @@ for name, X, y, model in [
     auc = roc_auc_score(y, proba)
     plt.plot(*roc_curve(y, proba)[:2], label='%s AUC=%.4f' % (name, auc))
 
-plt.plot([0, 1], [0, 1], '--', color='black',)
+plt.plot([0, 1], [0, 1], '--', color='black', )
 plt.legend(fontsize='large')
 plt.grid()
 
@@ -183,7 +195,6 @@ print("Well done!")
 
 
 def tf(tokens):
-
     voc = dict()
 
     for token in tokens:
@@ -193,17 +204,16 @@ def tf(tokens):
             voc[token] += 1
 
     for key in voc.keys():
-        voc[key] = voc[key] / float(len(tokens))
+        voc[key] = voc[key] / len(tokens)
 
     return voc
 
 
 def idf(token, corpus):
-    return np.log10(len(corpus) / sum([1.0 for t in corpus if token in t]))
+    return np.log(len(corpus) / (sum([1 for t in corpus if token in t]) + 1))
 
 
 def make_tf_idf_for_tokens(corpus):
-
     corpus = list(map(lambda cmnt: cmnt.split(' '), corpus))
 
     tf_idf_voc = dict()
@@ -213,7 +223,6 @@ def make_tf_idf_for_tokens(corpus):
         computed_tf = tf(comment)
 
         for word in computed_tf:
-
             tf_idf_voc[word] = computed_tf[word] * idf(word, corpus)
 
     return dict(sorted(tf_idf_voc.items(), key=lambda item: item[1], reverse=True)[:10000])
@@ -223,7 +232,6 @@ tf_idf_dict = make_tf_idf_for_tokens(corpus=texts_train)
 
 
 def text_to_tf_idf(text):
-
     tf_idf = [0.0] * len(tf_idf_dict)
     tf_idf_map = dict()
 
@@ -240,22 +248,21 @@ def text_to_tf_idf(text):
 X_train_bow_2 = np.stack(list(map(text_to_tf_idf, texts_train)))
 X_test_bow_2 = np.stack(list(map(text_to_tf_idf, texts_test)))
 
-
 tf_model = LogisticRegression().fit(X_train_bow_2, y_train)
 
 for name, X, y, model in [
-    ('train', X_train_bow, y_train, tf_model),
-    ('test ', X_test_bow, y_test, tf_model)
+    ('train', X_train_bow_2, y_train, tf_model),
+    ('test ', X_test_bow_2, y_test, tf_model)
 ]:
     proba = model.predict_proba(X)[:, 1]
     auc = roc_auc_score(y, proba)
     plt.plot(*roc_curve(y, proba)[:2], label='%s AUC=%.4f' % (name, auc))
 
-plt.plot([0, 1], [0, 1], '--', color='black',)
+plt.plot([0, 1], [0, 1], '--', color='black', )
 plt.legend(fontsize='large')
 plt.grid()
 
-test_accuracy = np.mean(tf_model.predict(X_test_bow) == y_test)
+test_accuracy = np.mean(tf_model.predict(X_test_bow_2) == y_test)
 print(f"Model accuracy: {test_accuracy:.3f}")
 assert test_accuracy > 0.77, "Hint: tune the parameter C to improve performance"
 print("Well done!")
@@ -264,36 +271,37 @@ embeddings = gensim.downloader.load('glove-wiki-gigaword-100')
 print(gensim.downloader.info()['models'].keys())
 
 
-# def vectorize_sum(comment):
-#     """
-#     implement a function that converts preprocessed comment to a sum of token vectors
-#     """
-#     embedding_dim = embeddings.wv.vectors.shape[1]
-#     features = np.zeros([embedding_dim], dtype='float32')
-#
-#     for token in comment.split(' '):
-#
-#
-#     return features
-#
-#
-# X_train_wv = np.stack([vectorize_sum(text) for text in texts_train])
-# X_test_wv = np.stack([vectorize_sum(text) for text in texts_test])
-#
-# wv_model = LogisticRegression().fit(X_train_wv, y_train)
-#
-# for name, X, y, model in [
-#     ('bow train', X_train_bow, y_train, bow_model),
-#     ('bow test ', X_test_bow, y_test, bow_model),
-#     ('vec train', X_train_wv, y_train, wv_model),
-#     ('vec test ', X_test_wv, y_test, wv_model)
-# ]:
-#     proba = model.predict_proba(X)[:, 1]
-#     auc = roc_auc_score(y, proba)
-#     plt.plot(*roc_curve(y, proba)[:2], label='%s AUC=%.4f' % (name, auc))
-#
-# plt.plot([0, 1], [0, 1], '--', color='black',)
-# plt.legend(fontsize='large')
-# plt.grid()
-#
-# assert roc_auc_score(y_test, wv_model.predict_proba(X_test_wv)[:, 1]) > 0.92, "something's wrong with your features"
+def vectorize_sum(comment):
+    """
+    implement a function that converts preprocessed comment to a sum of token vectors
+    """
+    embedding_dim = embeddings.wv.vectors.shape[1]
+    features = np.zeros([embedding_dim], dtype='float32')
+    for token in comment.split(' '):
+        try:
+            features += embeddings.get_vector(token)
+        except KeyError:
+            continue
+    return features
+
+
+X_train_wv = np.stack([vectorize_sum(text) for text in texts_train])
+X_test_wv = np.stack([vectorize_sum(text) for text in texts_test])
+
+wv_model = LogisticRegression().fit(X_train_wv, y_train)
+
+for name, X, y, model in [
+    ('bow train', X_train_bow, y_train, bow_model),
+    ('bow test ', X_test_bow, y_test, bow_model),
+    ('vec train', X_train_wv, y_train, wv_model),
+    ('vec test ', X_test_wv, y_test, wv_model)
+]:
+    proba = model.predict_proba(X)[:, 1]
+    auc = roc_auc_score(y, proba)
+    plt.plot(*roc_curve(y, proba)[:2], label='%s AUC=%.4f' % (name, auc))
+
+plt.plot([0, 1], [0, 1], '--', color='black', )
+plt.legend(fontsize='large')
+plt.grid()
+
+assert roc_auc_score(y_test, wv_model.predict_proba(X_test_wv)[:, 1]) > 0.92, "something's wrong with your features"
